@@ -7,6 +7,8 @@ be displayed
 ================================================
 '''
 
+from Game import Game
+
 # Parent class for the different menu types
 class Menu(object):
     def __init__(self):
@@ -59,7 +61,8 @@ class Menu(object):
             print("Invalid option, please try again.\n")
             self.close()
 
-# Child of Menu class which is responsible for the Main Menu
+# Child of Menu class
+# Responsible for the Main Menu
 class MainMenu(Menu):
     def __init__(self):
         Menu.__init__(self)
@@ -70,24 +73,63 @@ class MainMenu(Menu):
         }
 
     def startGame(self):
-        game_menu_instance = GameMenu()
-        game_menu_instance.start()
+        intro_choice_menu = IntroChoiceMenu()
+        intro_choice_menu.start()
 
-# Child of Menu class which is responsible for the Game Menu
-class GameMenu(Menu):
+# Child of Menu class
+# Responsible for the intro choice menu
+class IntroChoiceMenu(Menu):
     def __init__(self):
         Menu.__init__(self)
+        self.menu_title = "Intro Choice"
+        self.options = {
+            "1. Fantasy" : self.startGame,
+            "2. Quit" : self.close
+
+        }
+        self.intro_prompts = [
+            "You enter a dungeon in a fantasy world."
+        ]
+
+    # Overridden chooseOption method
+    # Prompts the user to input one of the displayed options and executes if it is valid
+    def chooseOption(self):
+        option = input()
+        index = int(option) - 1
+        try:
+            keys = list(self.options)
+            self.options[keys[index]](self.intro_prompts[index])
+        except ValueError or IndexError or KeyError:
+            try:
+                keys = list(self.options)
+                self.options[keys[index]]()
+            except IndexError or KeyError:
+                print("That is not a valid option, please enter the correct number for your choice.")
+                chooseOption()
+
+    def startGame(self, intro_choice):
+        print("Intro: " + intro_choice)
+        game_menu = GameMenu(Game(intro_choice))
+        game_menu.start()
+
+# Child of Menu class
+# Responsible for the Game Menu
+class GameMenu(Menu):
+    def __init__(self, game):
+        Menu.__init__(self)
+        self.game = game
         self.menu_title = "Game Menu"
         self.options = {
-            "1. Interact with computer" : self.interactWithComputer,
+            "1. Prompt" : self.promptComputer,
             "2. Exit Game" : self.close
         }
 
     # Method which gives the user an interface with the machine learning algorithm
-    def interactWithComputer(self):
+    def promptComputer(self):
         prompt = input("You: ")
         # Give prompt to the machine learning algorithm
-        print("response to \"%s\"" % prompt)
+        self.game.text_model.generate(prompt)
+        print(self.game.text_model.getPrompts())
 
     # Override the close method to make it not quit() and instead just return
     # (in the loop this should simply go back to the main menu)
