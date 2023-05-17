@@ -1,9 +1,12 @@
 import tkinter as tk
-import customtkinter as ctk
+from gtts import gTTS
+from pygame import mixer
+import os
 from PIL import ImageTk, Image
 
 class UI:
     userMessage = ""
+    generatedMessage = ""
 
     def __init__(self):
         ######## General Setup ########
@@ -11,9 +14,9 @@ class UI:
         self.window.geometry("1200x900")
         self.window.title("Dungeon AI")
         self.window.configure(bg='#0A2239')
-        self.path = "D:\\University Stuff\\Team-Software-Engineering-Group-5\\UI\\image.jpg"
+        self.path = os.getcwd() + "\\src\\image.jpg"
 
-        ######## Setting up frame for use of grid layout ########
+                ######## Setting up frame for use of grid layout ########
         self.entryFrame = tk.Frame(self.window)
         self.entryFrame.configure(bg='#0A2239')
         self.entryFrame.columnconfigure(0, weight=1)
@@ -26,18 +29,15 @@ class UI:
         self.titleText.grid(row=0, column=1, padx=5, pady=10, sticky="we")
 
         ######## Show Generated Image (by image name 'image.jpg') ########
-        self.img = ImageTk.PhotoImage(Image.open(self.path))
-        self.panel = tk.Label(self.entryFrame, image = self.img)
-        self.panel.configure(bg='#0A2239')
-        self.panel.grid(row=1, column=1, padx=5, pady=20, sticky="we")
+        self.showImage(self.path)
 
         ######## Show Generated Message Text ########
-        self.label = tk.Label(self.entryFrame, text="", font= ('Arial', 12), fg="grey", wraplength=900, justify="left", anchor="center")
+        self.label = tk.Label(self.entryFrame, text="", font= ('Arial', 12), fg="white", wraplength=900, justify="left", anchor="center")
         self.label.configure(bg='#30332E')
         self.label.grid(row=2, column=1, padx=30, pady=20, sticky="we")
 
         ######## User Text Entry ########
-        self.entryBox = tk.Entry(self.entryFrame, font=('Arial', 16))
+        self.entryBox = tk.Entry(self.entryFrame, fg="white", font=('Arial', 16))
         self.entryBox.bind("<KeyPress>", self.shortcut)
         self.entryBox.configure(bg='#30332B')
         self.entryBox.grid(row=3, column=0, padx=50, columnspan=2, sticky="we")
@@ -48,7 +48,7 @@ class UI:
         self.sendbtn.grid(row=3, column=1, padx=5, sticky="e")
         
         ######## TTS Button ########
-        self.speachbtn = tk.Button(self.entryFrame, text="🔊", font=('Arial', 18), justify="center", command=self.outputGen)
+        self.speachbtn = tk.Button(self.entryFrame, text="🔊", font=('Arial', 18), justify="center", command=self.speak)
         self.speachbtn.grid(row=3, column=2, padx=5, sticky="e")
 
         
@@ -64,8 +64,18 @@ class UI:
         if  event.keysym == "Return":
             self.outputGen()
 
+    def showImage(self, path):
+        self.img = ImageTk.PhotoImage(Image.open(path))
+        self.panel = tk.Label(self.entryFrame, image = self.img)
+        self.panel.configure(bg='#0A2239')
+        self.panel.grid(row=1, column=1, padx=5, pady=20, sticky="we")
+
     def outputGen(self):
         input_text = self.entryBox.get()
+        self.imageGen(input_text)
+        generatedStory = self.textGen(input_text)
+        self.generatedMessage = generatedStory
+        #self.speak(input_text)
         if input_text:
             if input_text.endswith('?'):
                 pass
@@ -75,16 +85,38 @@ class UI:
                 input_text += '.'
             
             input_text += ' '
-            self.updateLabel(input_text)
+            self.userMessage = ''
+            self.label.config(text=generatedStory)
+            #self.updateLabel(generatedStory)
             self.entryBox.delete(0, 'end')
 
+    def speak(self):
+        input_text = self.label.cget("text")
+        tts = gTTS(text=input_text, lang='en')
+
+        # Save the speech audio file
+        tts.save("output.mp3")
+
+        mixer.init()
+
+        # Load the MP3 file
+        mixer.music.load("output.mp3")
+
+        # Play the MP3 file
+        mixer.music.play()
+
+        # Wait for the audio to finish playing
+        while mixer.music.get_busy():
+            continue
+
+        # Clean up
+        mixer.quit()
 
     def updateLabel(self, text):
         if text:
             self.userMessage += text[0]
             self.label.config(text=self.userMessage)
             self.window.after(25, self.updateLabel, text[1:])
-
 
 
 UI()

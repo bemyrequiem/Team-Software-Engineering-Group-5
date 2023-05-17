@@ -46,7 +46,7 @@ class Menu(object):
             self.options[keys[int(option) - 1]]()
         except IndexError or KeyError:
             print("That is not a valid option, please enter the correct number for your choice.")
-            chooseOption()
+            self.chooseOption()
 
     # Default close method
     # Confirms the user wishes to exit and if so, exit the menu
@@ -98,18 +98,17 @@ class IntroChoiceMenu(Menu):
         index = int(option) - 1
         try:
             keys = list(self.options)
-            self.options[keys[index]](self.intro_prompts[index])
-        except ValueError or IndexError or KeyError:
-            try:
-                keys = list(self.options)
+            if index < len(keys) - 1:
+                self.options[keys[index]](self.intro_prompts[index])
+            else:
                 self.options[keys[index]]()
-            except IndexError or KeyError:
-                print("That is not a valid option, please enter the correct number for your choice.")
-                chooseOption()
+        except ValueError or IndexError or KeyError:
+            print("That is not a valid option, please enter the correct number for your choice.")
+            self.chooseOption()
 
     def startGame(self, intro_choice):
-        print("Intro: " + intro_choice)
         game_menu = GameMenu(Game(intro_choice))
+        print("Intro: " + intro_choice)
         game_menu.start()
 
 # Child of Menu class
@@ -128,7 +127,7 @@ class GameMenu(Menu):
     def promptComputer(self):
         prompt = input("You: ")
         # Give prompt to the machine learning algorithm
-        self.game.text_model.generate(prompt)
+        self.game.generateImageAndText(prompt)
         print(self.game.text_model.getPrompts())
 
     # Override the close method to make it not quit() and instead just return

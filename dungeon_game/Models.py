@@ -7,10 +7,18 @@ the machine learning model from bloom
 ================================================
 '''
 
-# Importing necessary modules for the models to work
-import torch
+# Importing necessary modules for the text model to work
 from transformers import BloomForCausalLM, BloomTokenizerFast
-from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler
+
+# Importing necessary modules for the image model to work
+import torch
+torch.cuda.empty_cache()
+from torch import autocast
+from torchvision import transforms as tfms
+from transformers import CLIPTextModel, CLIPTokenizer
+from diffusers import StableDiffusionPipeline
+from PIL import Image
+from datetime import datetime
 
 # Importing local modules
 from Prompts import Prompt, PromptList
@@ -47,16 +55,16 @@ class TextModel(Model):
         Model.__init__(self, intro_prompt)
         self._model = BloomForCausalLM.from_pretrained("bigscience/bloom-1b7")
         self.__tokenizer = BloomTokenizerFast.from_pretrained("bigscience/bloom-1b7")
-        self.__inputs = self.__tokenizer(self.getStory(), return_tensors="pt")
-        self.__result_length = 50
+        self.__result_length = 200
+        self.__inputs = self.__tokenizer(self.getStory()[-50:], return_tensors="pt")
 
     def generate(self):
-        self._prompts.addPrompt(Prompt(prompt, "You"))
         response = self.__samplingSearch()
         response.replace(self.getStory(), '')
         self._prompts.addPrompt(Prompt(response, "Computer"))
     
     def generate(self, prompt):
+        prompt = prompt + " "
         self._prompts.addPrompt(Prompt(prompt, "You"))
         self.__inputs = self.__tokenizer(self.__getInputs(), return_tensors="pt")
         response = self.__samplingSearch()
@@ -64,14 +72,22 @@ class TextModel(Model):
         self._prompts.addPrompt(Prompt(response, "Computer"))
 
     def __getInputs(self):
-        if len(self.getStory()) < 50 + len(self._intro_prompt.getText()):
-            return self.getStory()
-        return self._intro_prompt.getText() + self.getStory()[-self.__result_length::]
+        if len(self.getStory()) > 400:
+            return self.getStory()[::-400]
+        return self.getStory()
 
     def __cleanResponse(self, response):
         response = response.replace(self.__getInputs(), '', 1)
-        head, sep, tail = response.split('.!?')[0]
-        return head
+        while len(response) > 0:
+            if response[-1] == "." or response[-1] == "!" or response[-1] == "?":
+                break
+            if "." not in response and "!" not in response and "?" not in response:
+                while response[-1] != " ":
+                    response = response[:-1]
+                response = response[:-1]
+                break
+            response = response[:-1]
+        return " " + response + " "
 
     def __samplingSearch(self):
         return self.__tokenizer.decode(self._model.generate(self.__inputs["input_ids"],\
@@ -90,13 +106,25 @@ class TextModel(Model):
 class ImageModel(Model):
     def __init__(self, intro_prompt):
         Model.__init__(self, intro_prompt)
-        self._model = "stabilityai/stable-diffusion-2-1"
-        self.__pipe = StableDiffusionPipeline.from_pretrained("stabilityai/stable-diffusion-2-1", torch_dtype=torch.float16)
-        self.__pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
-        self.__pipe = pipe.to("cuda")
-
-    def generate(self):
-        return
+        self._model = "CompVis/stable-diffusion-v1-4"
+        self.__pipe = StableDiffusionPipeline.from_pretrained(self._model, torch_dtype=torch.float16)
+        self.__torch_device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.__pipe = self.__pipe.to(self.__torch_device)
+        self.__width = 256
+        self.__height = 256
+        self.__style = "fantasy style"
+        with autocast("cuda"):
+            self.__image = self.__pipe(self._intro_prompt.getText(), width=self.__width, height=self.__height).images[0]
+        self.__saveImage()
     
     def generate(self, prompt):
-        return
+        torch.cuda.empty_cache()
+        prompt = prompt.getText() + self.__style
+        with autocast("cuda"):
+            self.__image = self.__pipe(prompt, width=self.__width, height=self.__height).images[0]
+        self.__saveImage()
+
+    def __saveImage(self):
+        current_datetime_string = str(datetime.now())
+        current_datetime_string = current_datetime_string.replace(":", "").replace(".", "").replace(" ", "_")
+        self.__image.save("images/IMG_" + current_datetime_string + ".png")
