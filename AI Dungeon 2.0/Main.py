@@ -9,11 +9,10 @@ VERSION 1.1 - Week Commencing 06/02/2023
 ================================================
 '''
 
-from Menus import MainMenu
+from UI import UI
 
 def main():
-    main_menu = MainMenu()
-    main_menu.start()
+    UI()
 
 if __name__ == "__main__":
     main()

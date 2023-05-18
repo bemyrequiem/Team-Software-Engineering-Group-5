@@ -20,6 +20,6 @@ class Game(object):
     def generateText(self, prompt):
         self.text_model.generate(prompt)
 
-    def generateImage(self):
-        self.image_model.generate(self.text_model.getPromptsList()[-1])
+    def generateImage(self, prompt):
+        self.image_model.generate(prompt)
     

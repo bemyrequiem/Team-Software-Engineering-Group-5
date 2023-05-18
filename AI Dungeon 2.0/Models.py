@@ -26,7 +26,7 @@ from Prompts import Prompt, PromptList
 class Model(object):
     def __init__(self, intro_prompt):
         self._model = None
-        self._intro_prompt = Prompt(intro_prompt, "Intro")
+        self._intro_prompt = Prompt(intro_prompt, "")
         self._prompts = PromptList()
         self._prompts.addPrompt(self._intro_prompt)
 
@@ -116,11 +116,10 @@ class ImageModel(Model):
         Model.__init__(self, intro_prompt)
         self._model = "CompVis/stable-diffusion-v1-4"
         self.__pipe = StableDiffusionPipeline.from_pretrained(self._model, torch_dtype=torch.float16)
-        self.__torch_device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.__torch_device = "cuda"
         self.__pipe = self.__pipe.to(self.__torch_device)
         self.__width = 256
         self.__height = 256
-        self.__style = "fantasy style"
 
         with autocast("cuda"):
             self.__image = self.__pipe(self._intro_prompt.getText(), width=self.__width, height=self.__height).images[0]
@@ -128,7 +127,6 @@ class ImageModel(Model):
     
     def generate(self, prompt):
         torch.cuda.empty_cache()
-        prompt = prompt.getText() + self.__style
 
         with autocast("cuda"):
             self.__image = self.__pipe(prompt, width=self.__width, height=self.__height).images[0]
